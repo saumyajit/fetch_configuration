@@ -262,6 +262,13 @@ main select {
     flex: 1;
     text-align: center;
 }
+
+/* Fix Zabbix core header clipping for custom gradient header */
+.header-title h1 {
+    line-height: 35px;   /* or 38px if you increase font-size */
+    overflow: visible;  /* allow full text */
+    white-space: normal; /* allow wrap if needed */
+}
 </style>
 
 <link href="./modules/get-host-ro/views/includes/css/jquery.dataTables.css" rel="stylesheet"/>
