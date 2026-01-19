@@ -209,6 +209,59 @@ main select {
   border-radius: 3px;
   background-color: white;
 }
+
+/* ==========================
+   HEADER GRADIENT ENHANCEMENT
+========================== */
+.header-title {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #ffffff;
+    padding: 1px 2px;
+    position: relative;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+/* Title text */
+#page-title-general {
+    color: #ffffff;
+    font-size: 30px;
+    font-weight: 600;
+    margin: 0;
+    position: relative;   /* override absolute */
+    left: auto;
+    transform: none;
+    text-align: center;
+}
+
+/* Sidebar toggle button */
+.header-title .button-toggle {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #ffffff;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.header-title .button-toggle:hover {
+    background: rgba(255, 255, 255, 0.25);
+    cursor: pointer;
+}
+
+/* Align nav and title nicely */
+.header-title {
+    display: flex;
+    align-items: center;
+}
+
+.header-title nav {
+    flex: 0 0 auto;
+}
+
+.header-title > div {
+    flex: 1;
+    text-align: center;
+}
 </style>
 
 <link href="./modules/get-host-ro/views/includes/css/jquery.dataTables.css" rel="stylesheet"/>
