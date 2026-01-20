@@ -1,8 +1,8 @@
 {
     "manifest_version": 2.0,
-    "id": "host-config-ro-pro",
-    "name": "Host's configuration details",
-    "version": "2.0",
+    "id": "host-config-ro-upd-1",
+    "name": "Host's configuration details Pro",
+    "version": "2.1",
     "namespace": "HostConfig",
     "author": "Saumyajit Pramanik",
     "url": "https://www.zabbix.com",
@@ -11,6 +11,10 @@
         "gethostro.view": {
             "class": "GetHostROView",
             "view": "viewhost"
+        },
+        "getgroupro.view": {
+            "class": "GetHostROView",
+            "view": "viewgroup"
         }
     }
 }
