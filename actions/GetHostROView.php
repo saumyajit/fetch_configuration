@@ -377,7 +377,7 @@ class GetHostROView extends \CController
             padding: 2px 6px;
             border-radius: 3px;
             font-size: 11px;
-            color: #fff;
+            color: ##1f2c33;
         }
         .prio-0 { background: #999999; }      /* Not classified - Gray */
         .prio-1 { background: #7499FF; }      /* Information - Blue */
