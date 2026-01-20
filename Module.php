@@ -15,15 +15,26 @@ class Module extends CModule {
 	 * Initialize module.
 	 */
 	public function init(): void {
-		// Initialize main menu (CMenu class instance).
-		APP::Component()->get('menu.main')
-			->findOrAdd(_('Reports'))
-				->getSubmenu()
-					->insertAfter(_('Top 100 Noisy Alerts'),((new \CMenuItem(_('Host Configuration (RO)')))
-						->setAction('gethostro.view'))
-					);
-	}
- 
+		// Initialize main menu (CMenu class instance)
+		$mainMenu = APP::Component()->get('menu.main');
+	
+			// Find or add 'Reports' main menu
+			$reportsMenu = $mainMenu->findOrAdd(_('Reports'));
+	
+				// Create parent menu 'Host Configuration (RO)'
+				$hostConfigMenu = new \CMenuItem(_('Host Configuration (RO)'));
+	
+					// Add sub-menu items to the parent
+					$hostConfigMenu->getSubmenu()
+						->add((new \CMenuItem(_('Host View')))
+							->setAction('gethostro.view'))
+						->add((new \CMenuItem(_('Group View')))
+							->setAction('getgroupro.view'));
+				
+		// Insert the parent menu under 'Reports' after 'Top 100 Noisy Alerts'
+		$reportsMenu->getSubmenu()
+			->insertAfter(_('Top 100 Noisy Alerts'), $hostConfigMenu);
+	} 
 	/**
 	 * Event handler, triggered before executing the action.
 	 *
