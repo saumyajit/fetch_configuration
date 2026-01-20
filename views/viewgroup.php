@@ -101,19 +101,19 @@ foreach($all_groups as $g) {
         min-width: 80px;
     }
 
-    .severity-0 { background: #999999; }
-    .severity-1 { background: #7499FF; }
-    .severity-2 { background: #83E8A0; }
-    .severity-3 { background: #FFC859; }
-    .severity-4 { background: #FFA059; }
-    .severity-5 { background: #E97659; }
+    .severity-0 { background: #999999; }      /* Not classified - Gray */
+    .severity-1 { background: #7499FF; }      /* Information - Blue */
+    .severity-2 { background: #FFC859; }      /* Low - Yellow */
+    .severity-3 { background: #FFA059; }      /* Medium - Orange */
+    .severity-4 { background: #E97659; }      /* High - Red */
+    .severity-5 { background: #E45959; }      /* Critical - Dark Red */
 
     /* Inline search wrapper */
     .inline-search-wrapper {
         display: flex;
         align-items: center;
         gap: 10px;
-        margin: 20px 0;
+        margin: 4px 550px;
     }
 
     .inline-search-wrapper label {
@@ -307,9 +307,76 @@ foreach($all_groups as $g) {
         padding-bottom: 10px;
         margin-bottom: 20px;
     }
+
+    /* ==========================
+	HEADER GRADIENT ENHANCEMENT
+	========================== */
+	.header-title {
+		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+		color: #ffffff;
+		padding: 8px 16px;
+		position: relative;
+		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+	}
+	
+	/* Title text */
+	#page-title-general {
+		color: #ffffff;
+		font-size: 30px;
+		font-weight: 600;
+		margin: 0;
+		position: relative;   /* override absolute */
+		left: auto;
+		transform: none;
+		text-align: center;
+	}
+	
+	/* Sidebar toggle button */
+	.header-title .button-toggle {
+		background: rgba(255, 255, 255, 0.15);
+		border: 1px solid rgba(255, 255, 255, 0.3);
+		color: #ffffff;
+		padding: 6px 12px;
+		border-radius: 4px;
+		font-size: 13px;
+	}
+	
+	.header-title .button-toggle:hover {
+		background: rgba(255, 255, 255, 0.25);
+		cursor: pointer;
+	}
+	
+	/* Align nav and title nicely */
+	.header-title {
+		display: flex;
+		align-items: center;
+	}
+	
+	.header-title nav {
+		flex: 0 0 auto;
+	}
+	
+	.header-title > div {
+		flex: 1;
+		text-align: center;
+	}
+	
+	/* Fix Zabbix core header clipping for custom gradient header */
+	.header-title h1 {
+		line-height: 35px;   /* or 38px if you increase font-size */
+		overflow: visible;  /* allow full text */
+		white-space: normal; /* allow wrap if needed */
+	}
 </style>
 
-<h1 style="text-align: center;">View HostGroup Configurations</h1>
+<header class="header-title">
+	<nav class="sidebar-nav-toggle" role="navigation" aria-label="Sidebar control">
+		<button type="button" id="sidebar-button-toggle" class="button-toggle" title="Show sidebar">Show sidebar</button>
+	</nav>
+	<div>
+		<h1 id="page-title-general" >View Monitoring Configurations Uisng HostGroup/s</h1>
+	</div>
+</header>
 
 <form method="post" id="groupForm">
     <div class="inline-search-wrapper">
@@ -413,8 +480,8 @@ if(!empty($selected_groupids)){
             <strong>Selected HostGroups: <?php echo htmlspecialchars(implode(', ', $selected_group_names)); ?></strong>
             (<?php echo $total_hosts; ?> unique host<?php echo $total_hosts > 1 ? 's' : ''; ?>)<br><br>
             <button type="button" onclick="downloadGroupConfig('csv')">📄 Download CSV</button>
-            <button type="button" onclick="downloadGroupConfig('html')">📋 Download HTML</button>
-            <button type="button" onclick="downloadGroupConfig('json')">📦 Download JSON</button>
+            <button type="button" onclick="downloadGroupConfig('html')">🌐 Download HTML</button>
+            <button type="button" onclick="downloadGroupConfig('json')">{ } Download JSON</button>
         </div>
 
         <!-- GENERAL INFORMATION - ALL HOSTS (TABULAR) -->
