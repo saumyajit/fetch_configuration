@@ -3,6 +3,7 @@
 A Zabbix frontend module that allows administrators to **view, extract, and export host configuration data** directly from the Zabbix Web UI.  
 This module makes it easy to audit, document, back up, or compare host configurations without writing Zabbix API scripts.
 
+## this one having 'Host View' & 'Group View' Pages under Host Configuration (RO) menu page
 ---
 
 ## ✨ Features
