@@ -2,7 +2,7 @@
     "manifest_version": 2.0,
     "id": "host-config-ro-upd-1",
     "name": "Host's configuration details Pro",
-    "version": "2.1",
+    "version": "2.2",
     "namespace": "HostConfig",
     "author": "Saumyajit Pramanik",
     "url": "https://www.zabbix.com",
