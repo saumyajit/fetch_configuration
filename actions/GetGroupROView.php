@@ -407,7 +407,7 @@ class GetGroupROView extends \CController
             display: inline-block;
             padding: 2px 6px;
             border-radius: 3px;
-            font-size: 11px;
+            font-size: 13px;
             color: ##1f2c33;
         }
         .prio-0 { background: #999999; }      /* Not classified - Gray */
