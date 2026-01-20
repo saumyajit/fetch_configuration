@@ -307,15 +307,6 @@ foreach($all_groups as $g) {
         padding-bottom: 10px;
         margin-bottom: 20px;
     }
-
-    .group-summary {
-        background: #fff3cd;
-        border: 1px solid #ffc107;
-        padding: 10px;
-        margin: 15px 0;
-        border-radius: 5px;
-        font-weight: bold;
-    }
 </style>
 
 <h1 style="text-align: center;">View HostGroup Configurations</h1>
@@ -418,13 +409,9 @@ if(!empty($selected_groupids)){
     if($total_hosts > 0){
         ?>
 
-        <div class="group-summary">
-            📊 Selected HostGroups: <strong><?php echo htmlspecialchars(implode(', ', $selected_group_names)); ?></strong> 
-            (<?php echo $total_hosts; ?> unique host<?php echo $total_hosts > 1 ? 's' : ''; ?>)
-        </div>
-
         <div class="export-section">
-            <strong>Export Configuration</strong><br><br>
+            <strong>Selected HostGroups: <?php echo htmlspecialchars(implode(', ', $selected_group_names)); ?></strong>
+            (<?php echo $total_hosts; ?> unique host<?php echo $total_hosts > 1 ? 's' : ''; ?>)<br><br>
             <button type="button" onclick="downloadGroupConfig('csv')">📄 Download CSV</button>
             <button type="button" onclick="downloadGroupConfig('html')">📋 Download HTML</button>
             <button type="button" onclick="downloadGroupConfig('json')">📦 Download JSON</button>
