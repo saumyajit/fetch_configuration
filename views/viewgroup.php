@@ -94,9 +94,9 @@ foreach($all_groups as $g) {
         display: inline-block;
         padding: 4px 10px;
         border-radius: 3px;
-        font-size: 12px;
+        font-size: 13px;
         font-weight: 600;
-        color: #fff;
+        color: #1f2c33;
         text-align: center;
         min-width: 80px;
     }
@@ -213,7 +213,7 @@ foreach($all_groups as $g) {
     }
 
     button {
-        padding: 8px 16px;
+        padding: 1px 4px;
         font-size: 14px;
         cursor: pointer;
         border: none;
@@ -228,9 +228,9 @@ foreach($all_groups as $g) {
     }
 
     .export-section {
-        background: #e8f4f8;
-        padding: 15px;
-        margin: 20px 0;
+        background: #fafafa;
+        padding: 2px;
+        margin: 2px 0;
         border-radius: 5px;
         text-align: center;
     }
@@ -242,7 +242,7 @@ foreach($all_groups as $g) {
     .section-header {
         background: #f0f0f0;
         padding: 10px;
-        margin: 20px 0 10px 0;
+        margin: 20px 0 10px 10px;
         font-weight: bold;
         border-left: 4px solid #0074cc;
         font-size: 16px;
@@ -392,7 +392,7 @@ foreach($all_groups as $g) {
             <div id="autocompleteDropdown" class="autocomplete-dropdown"></div>
         </div>
         <input type="hidden" name="groupids_submitted" id="groupidsSubmitted" value="">
-        <button type="submit">Load HostGroups</button>
+        <button type="submit">Search HostGroups</button>
     </div>
 </form>
 
