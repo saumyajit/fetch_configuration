@@ -77,7 +77,6 @@ foreach($all_hosts as $h) {
     <style>
         body {
             font-family: 'Trebuchet MS', Tahoma, Arial, sans-serif;
-            margin: 1px;
         }
 
         /* Table styles */
