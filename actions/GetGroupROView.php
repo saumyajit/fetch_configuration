@@ -9,7 +9,7 @@ use API;
 /**
  * Read-only host config view with hostgroup support.
  */
-class GetHostROView extends CAction {
+class GetGroupROView extends CAction {
 
     public function init(): void {
         // Read-only, so CSRF not needed.
