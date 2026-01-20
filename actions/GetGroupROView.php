@@ -410,12 +410,12 @@ class GetGroupROView extends \CController
             font-size: 11px;
             color: #fff;
         }
-        .prio-0 { background: #999; }
-        .prio-1 { background: #5bc0de; }
-        .prio-2 { background: #5cb85c; }
-        .prio-3 { background: #f0ad4e; }
-        .prio-4 { background: #d9534f; }
-        .prio-5 { background: #b52b2b; }
+        .prio-0 { background: #999999; }      /* Not classified - Gray */
+        .prio-1 { background: #7499FF; }      /* Information - Blue */
+        .prio-2 { background: #FFC859; }      /* Low - Yellow */
+        .prio-3 { background: #FFA059; }      /* Medium - Orange */
+        .prio-4 { background: #E97659; }      /* High - Red */
+        .prio-5 { background: #E45959; }      /* Critical - Dark Red */
         .status-enabled {
             color: #28a745;
             font-weight: 600;
