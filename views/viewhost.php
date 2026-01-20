@@ -1,807 +1,851 @@
 <?php
+/**
+ * View file for multi-host configuration viewer
+ * With colored severity badges (like HTML export)
+ */
 
-require_once './include/page_header.php';
-
-foreach (glob("./include/classes/html/*.php") as $filename)
-{
-	require_once $filename;
-}
-
+// Mapping arrays for display
 static $map_status = array(
-	0 => '<span class="green">Monitored</span>',
-	1 => '<span class="red">Not Monitored</span>'
-);
-static $map_maintenance_status  = array(
-        0 => '<span class="green">Not Under Maintenance</span>',
-        1 => '<span class="red"><span class="icon-maintenance"></span> Under Maintenance</span>'
-);
-static $map_item_status  = array(
-        0 => '<span class="green">Enabled</span>',
-        1 => '<span class="red">Disabled</span>'
-);
-static $map_item_state  = array(
-        0 => '<span class="green">Normal</span>',
-        1 => '<span class="red">Not Supported</span>'
-);
-static $map_trigger_status  = array(
-        0 => '<span class="green">Enabled</span>',
-        1 => '<span class="red">Disabled</span>'
-);
-static $map_trigger_state  = array(
-        0 => '<span class="green">Normal</span>',
-        1 => '<span class="red">Not Supported</span>'
-);
-static $map_trigger_priority  = array(
-        0 => 'Not classified',
-        1 => 'Information',
-        2 => 'Low',
-        3 => 'Medium',
-        4 => 'High',
-        5 => 'Critical'
+    0 => '<span style="color: green;">Monitored</span>',
+    1 => '<span style="color: red;">Not Monitored</span>'
 );
 
-function build_table($array){
-	$html="";
-	foreach($array as $key => $value ){
-	    $html .= '<tr>';
-	    $html .= '<th>' . htmlspecialchars($key) . '</th>';
-	    $html .= '<td>' . htmlspecialchars($value) . '</td>';
-	    $html .= '</tr>';
-        }
+static $map_maintenance_status = array(
+    0 => '<span style="color: green;">Not Under Maintenance</span>',
+    1 => '<span style="color: red;"><span class="icon-maintenance"></span> Under Maintenance</span>'
+);
 
-    return $html;
+static $map_item_status = array(
+    0 => '<span style="color: green;">Enabled</span>',
+    1 => '<span style="color: red;">Disabled</span>'
+);
+
+static $map_item_state = array(
+    0 => '<span style="color: green;">Normal</span>',
+    1 => '<span style="color: red;">Not Supported</span>'
+);
+
+static $map_trigger_status = array(
+    0 => '<span style="color: green;">Enabled</span>',
+    1 => '<span style="color: red;">Disabled</span>'
+);
+
+static $map_trigger_state = array(
+    0 => '<span style="color: green;">Normal</span>',
+    1 => '<span style="color: red;">Not Supported</span>'
+);
+
+static $map_trigger_priority = array(
+    0 => 'Not classified',
+    1 => 'Information',
+    2 => 'Low',
+    3 => 'Medium',
+    4 => 'High',
+    5 => 'Critical'
+);
+
+// Get severity colors from Zabbix settings
+$severities = API::Settings()->get([
+    'output' => ['severity_color_0','severity_color_1','severity_color_2','severity_color_3','severity_color_4','severity_color_5']
+]);
+
+// Get all hosts for autocomplete
+$all_hosts = API::Host()->get([
+    'output' => ['hostid', 'host', 'name'],
+    'sortfield' => 'name',
+    'sortorder' => 'ASC'
+]);
+
+$hosts_data_json = [];
+foreach($all_hosts as $h) {
+    $display = $h['host'];
+    if(!empty($h['name'])) {
+        $display .= ' (' . $h['name'] . ')';
+    }
+    $hosts_data_json[] = [
+        'id' => $h['hostid'],
+        'name' => $h['host'],
+        'display' => $display
+    ];
 }
 ?>
 
-<style>
-/* General Table Styling */
-table {
-  border-collapse: collapse;
-  width: 100%;
-  font-family: "Trebuchet MS", Tahoma, Arial, sans-serif;
-}
-
-th, td {
-  text-align: left;
-  padding: 8px;
-}
-
-/* Dotted Borders Between Cells */
-table td + td,
-table th + td {
-  border-left: solid 1px;
-  border-style: dotted;
-}
-
-/* Table Header Bottom Border */
-thead {
-  border-bottom: solid 1px;
-  border-style: dotted;
-}
-
-/* Alternating Row Colors */
-tr:nth-child(even) {
-  background-color: #f4f7fb;
-}
-
-/* Summary/Section Headers */
-summary h2 {
-  display: inline-block;
-  font-family: "Trebuchet MS", Tahoma, Arial, sans-serif;
-}
-
-/* Tooltip Styling */
-.tooltip {
-  text-decoration: none;
-  position: relative;
-}
-
-.tooltip span {
-  display: none;
-}
-
-.tooltip:hover span {
-  display: block;
-  position: absolute;
-  top: 0;
-  left: -75%;
-  z-index: 1000;
-  width: auto;
-}
-
-/* Page Title */
-#page-title-general {
-  text-align: center;
-  margin: -15px;
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  font-family: "Trebuchet MS", Tahoma, Arial, sans-serif;
-}
-
-/* Host Search Wrapper Form Layout */
-.host-search-wrapper {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 8px;
-  font-family: "Trebuchet MS", Tahoma, Arial, sans-serif;
-}
-
-.host-search-wrapper label,
-.host-search-wrapper input,
-.host-search-wrapper select,
-.host-search-wrapper button {
-  font-family: "Trebuchet MS", Tahoma, Arial, sans-serif;
-}
-
-/* Maintenance Icon */
-.icon-maintenance::before {
-  content: "\26A0";
-  margin-right: 6px;
-  font-weight: bold;
-  color: #d4af37;
-  font-size: 18px;
-  vertical-align: middle;
-}
-
-/* Table Headers For Items & Triggers */
-#items thead th,
-#triggers thead th,
-#macros thead th {
-  background-color: #e9eff6;
-  color: #1a1a1a;
-  font-weight: 600;
-  font-size: 14px;
-  border-bottom: 2px solid #d0d7e1;
-  letter-spacing: 0.3px;
-  font-family: "Trebuchet MS", Tahoma, Arial, sans-serif;
-}
-
-/* Table Cells Font */
-table th,
-table td {
-  font-family: "Trebuchet MS", Tahoma, Arial, sans-serif;
-}
-
-/* Main Content */
-main,
-main label,
-main input,
-main select,
-main button,
-main h1 {
-  font-family: "Trebuchet MS", Tahoma, Arial, sans-serif;
-}
-
-/* Buttons Hover Effect */
-main button:hover {
-  cursor: pointer;
-  opacity: 0.9;
-}
-
-/* Consistent Spacing */
-main input, main select, main button {
-  padding: 4px 8px;
-  font-size: 14px;
-}
-
-main button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 32px;
-  padding: 4px 12px;
-  font-family: "Trebuchet MS", Tahoma, Arial, sans-serif;
-  font-size: 14px;
-  cursor: pointer;
-  border: none;
-  background-color: #0074cc;
-  color: white;
-  border-radius: 3px;
-  box-sizing: border-box;
-}
-
-/* Select dropdown styling */
-main select {
-  height: 32px;
-  border: 1px solid #ccc;
-  border-radius: 3px;
-  background-color: white;
-}
-
-/* ==========================
-   HEADER GRADIENT ENHANCEMENT
-========================== */
-.header-title {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: #ffffff;
-    padding: 8px 16px;
-    position: relative;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-}
-
-/* Title text */
-#page-title-general {
-    color: #ffffff;
-    font-size: 30px;
-    font-weight: 600;
-    margin: 0;
-    position: relative;   /* override absolute */
-    left: auto;
-    transform: none;
-    text-align: center;
-}
-
-/* Sidebar toggle button */
-.header-title .button-toggle {
-    background: rgba(255, 255, 255, 0.15);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    color: #ffffff;
-    padding: 6px 12px;
-    border-radius: 4px;
-    font-size: 13px;
-}
-
-.header-title .button-toggle:hover {
-    background: rgba(255, 255, 255, 0.25);
-    cursor: pointer;
-}
-
-/* Align nav and title nicely */
-.header-title {
-    display: flex;
-    align-items: center;
-}
-
-.header-title nav {
-    flex: 0 0 auto;
-}
-
-.header-title > div {
-    flex: 1;
-    text-align: center;
-}
-
-/* Fix Zabbix core header clipping for custom gradient header */
-.header-title h1 {
-    line-height: 35px;   /* or 38px if you increase font-size */
-    overflow: visible;  /* allow full text */
-    white-space: normal; /* allow wrap if needed */
-}
-</style>
-
-<link href="./modules/get-host-ro/views/includes/css/jquery.dataTables.css" rel="stylesheet"/>
-<script src="./modules/get-host-ro/views/includes/js/jquery.dataTables.js"></script>
-
-<script>
-// Handle hostgroup selection to populate hosts
-function onHostGroupChange() {
-    var hostgroupSelect = document.getElementById('hostgroup');
-    var hostSelect = document.getElementById('host');
-    var selectedGroupId = hostgroupSelect.value;
-    
-    // Clear current host options
-    hostSelect.innerHTML = '<option value="">-- Select Host (Optional) --</option>';
-    
-    if (!selectedGroupId) {
-        return;
-    }
-    
-    // Get hosts for selected hostgroup via AJAX
-    var xhr = new XMLHttpRequest();
-    xhr.open('POST', 'zabbix.php?action=gethostro.view', true);
-    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-    
-    xhr.onload = function() {
-        if (xhr.status === 200) {
-            try {
-                var hosts = JSON.parse(xhr.responseText);
-                hosts.forEach(function(host) {
-                    var option = document.createElement('option');
-                    option.value = host.hostid;
-                    option.textContent = host.name || host.host;
-                    hostSelect.appendChild(option);
-                });
-            } catch(e) {
-                console.error('Error parsing hosts:', e);
-            }
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: 'Trebuchet MS', Tahoma, Arial, sans-serif;
+            margin: 20px;
         }
-    };
-    
-    xhr.send('get_hostgroup_hosts=1&groupid=' + encodeURIComponent(selectedGroupId));
-}
 
-function downloadHostConfig(format) {
-    var hostgroupField = document.getElementById('hostgroup');
-    var hostField = document.getElementById('host');
-    
-    if (!hostgroupField.value) {
-        alert('Please select a hostgroup first.');
-        return;
-    }
+        /* Table styles */
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            font-family: 'Trebuchet MS', Tahoma, Arial, sans-serif;
+        }
 
-    var hostgroupid = encodeURIComponent(hostgroupField.value);
-    var hostid = hostField.value ? encodeURIComponent(hostField.value) : '';
-    
-    var base = 'zabbix.php';
-    var url = base + '?action=gethostro.view&export=' + encodeURIComponent(format) + '&groupid=' + hostgroupid;
-    
-    if (hostid) {
-        url += '&hostid=' + hostid;
-    }
-    
-    window.location.href = url;
-}
-</script>
+        th, td {
+            text-align: left;
+            padding: 8px;
+            border: 1px solid #ddd;
+        }
+
+        thead th {
+            background-color: #e9eff6;
+            color: #1a1a1a;
+            font-weight: 600;
+            font-size: 14px;
+            border-bottom: 2px solid #d0d7e1;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f4f7fb;
+        }
+
+        /* Severity Badge Styles */
+        .severity-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 3px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #1f2c33;
+            text-align: center;
+            min-width: 80px;
+        }
+
+        .severity-0 { background: #999999; }      /* Not classified - Gray */
+        .severity-1 { background: #7499FF; }      /* Information - Blue */
+        .severity-2 { background: #FFC859; }      /* Low - Yellow */
+        .severity-3 { background: #FFA059; }      /* Medium - Orange */
+        .severity-4 { background: #E97659; }      /* High - Red */
+        .severity-5 { background: #E45959; }      /* Critical - Dark Red */
+
+        /* Inline search wrapper */
+        .inline-search-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 4px 550px;
+        }
+
+        .inline-search-wrapper label {
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        /* Autocomplete multi-select */
+        .multiselect-container {
+            position: relative;
+            flex: 1;
+            max-width: 600px;
+        }
+
+        .multiselect-input-wrapper {
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            padding: 5px;
+            min-height: 34px;
+            background: white;
+            cursor: text;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .multiselect-input-wrapper:focus-within {
+            border-color: #0074cc;
+            box-shadow: 0 0 3px rgba(0, 116, 204, 0.3);
+        }
+
+        .selected-host-tag {
+            background: #e8f4f8;
+            border: 1px solid #0074cc;
+            border-radius: 3px;
+            padding: 3px 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 13px;
+        }
+
+        .selected-host-tag .remove {
+            cursor: pointer;
+            color: #0074cc;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .selected-host-tag .remove:hover {
+            color: #d00;
+        }
+
+        #hostSearchInput {
+            border: none;
+            outline: none;
+            flex: 1;
+            min-width: 150px;
+            padding: 5px;
+            font-family: 'Trebuchet MS', Tahoma, Arial, sans-serif;
+            font-size: 14px;
+        }
+
+        .autocomplete-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ccc;
+            border-top: none;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .autocomplete-dropdown.show {
+            display: block;
+        }
+
+        .autocomplete-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .autocomplete-item:hover {
+            background: #e8f4f8;
+        }
+
+        .autocomplete-item.selected {
+            background: #f0f0f0;
+            color: #999;
+        }
+
+        button {
+            padding: 1px 4px;
+            font-size: 14px;
+            cursor: pointer;
+            border: none;
+            background-color: #0074cc;
+            color: white;
+            border-radius: 3px;
+            font-family: 'Trebuchet MS', Tahoma, Arial, sans-serif;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        .export-section {
+            background: #fafafa;
+            padding: 2px;
+            margin: 2px 0;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .export-section button {
+            margin: 5px;
+        }
+
+        .section-header {
+            background: #f0f0f0;
+            padding: 10px;
+            margin: 20px 0 10px 10px;
+            font-weight: bold;
+            border-left: 4px solid #0074cc;
+            font-size: 16px;
+        }
+
+        .host-name-header {
+            color: #0074cc;
+            font-weight: bold;
+            font-size: 15px;
+        }
+
+        /* Horizontal layout for Macros/Inventory/Tags */
+        .horizontal-sections {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .horizontal-sections > div {
+            flex: 1;
+            min-width: 0;
+        }
+
+        details {
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+        }
+
+        summary {
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 15px;
+            padding: 5px;
+        }
+
+        summary:hover {
+            background: #f0f0f0;
+        }
+
+        .icon-maintenance::before {
+            content: "⚠";
+            margin-right: 6px;
+            font-weight: bold;
+            color: #d4af37;
+            font-size: 18px;
+            vertical-align: middle;
+        }
+
+        .host-details-section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: #fafafa;
+        }
+
+        .host-title {
+            color: #0074cc;
+            border-bottom: 2px solid #0074cc;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+		
+		/* ==========================
+		HEADER GRADIENT ENHANCEMENT
+		========================== */
+		.header-title {
+			background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+			color: #ffffff;
+			padding: 8px 16px;
+			position: relative;
+			box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+		}
+		
+		/* Title text */
+		#page-title-general {
+			color: #ffffff;
+			font-size: 30px;
+			font-weight: 600;
+			margin: 0;
+			position: relative;   /* override absolute */
+			left: auto;
+			transform: none;
+			text-align: center;
+		}
+		
+		/* Sidebar toggle button */
+		.header-title .button-toggle {
+			background: rgba(255, 255, 255, 0.15);
+			border: 1px solid rgba(255, 255, 255, 0.3);
+			color: #ffffff;
+			padding: 6px 12px;
+			border-radius: 4px;
+			font-size: 13px;
+		}
+		
+		.header-title .button-toggle:hover {
+			background: rgba(255, 255, 255, 0.25);
+			cursor: pointer;
+		}
+		
+		/* Align nav and title nicely */
+		.header-title {
+			display: flex;
+			align-items: center;
+		}
+		
+		.header-title nav {
+			flex: 0 0 auto;
+		}
+		
+		.header-title > div {
+			flex: 1;
+			text-align: center;
+		}
+		
+		/* Fix Zabbix core header clipping for custom gradient header */
+		.header-title h1 {
+			line-height: 35px;   /* or 38px if you increase font-size */
+			overflow: visible;  /* allow full text */
+			white-space: normal; /* allow wrap if needed */
+		}
+
+    </style>
+</head>
+<body>
 
 <header class="header-title">
 	<nav class="sidebar-nav-toggle" role="navigation" aria-label="Sidebar control">
 		<button type="button" id="sidebar-button-toggle" class="button-toggle" title="Show sidebar">Show sidebar</button>
 	</nav>
 	<div>
-		<h1 id="page-title-general">View Host Configurations</h1>
+		<h1 id="page-title-general" >View Monitoring Configurations for Host/s</h1>
 	</div>
 </header>
-<main>
-	<form method="post">
-		<div id="tabs" class="table-forms-container ui-tabs ui-widget ui-widget-content ui-corner-all" style="visibility: visible;">
-			<div id="maintenanceTab" aria-labelledby="tab_maintenanceTab" class="ui-tabs-panel ui-widget-content ui-corner-bottom" role="tabpanel" aria-expanded="true" aria-hidden="false">
-				<ul class="table-forms" id="maintenanceFormList">
-					<li>
-						<div class="host-search-wrapper">
-							<label class="form-label-asterisk" for="hostgroup">HostGroup</label>
-							<select id="hostgroup" name="hostgroup" onchange="onHostGroupChange()" required>
-								<option value="">-- Select HostGroup --</option>
-<?php
-// Fetch hostgroups starting with 'CUSTOMER/'
-$hostgroups = api::hostgroup()->get(array(
-    'output' => array('groupid', 'name'),
-    'search' => array('name' => 'CUSTOMER/'),
-    'searchByAny' => true,
-    'startSearch' => true,
-    'sortfield' => 'name'
-));
 
-foreach ($hostgroups as $group) {
-?>
-								<option value="<?php echo $group['groupid']; ?>" <?php echo (isset($_POST['hostgroup']) && $_POST['hostgroup'] == $group['groupid']) ? 'selected' : ''; ?>>
-									<?php echo htmlspecialchars($group['name']); ?>
-								</option>
-<?php } ?>
-							</select>
+<form method="post" id="hostForm">
+    <div class="inline-search-wrapper">
+        <label for="hostSearchInput">Host:</label>
+        <div class="multiselect-container">
+            <div class="multiselect-input-wrapper" onclick="document.getElementById('hostSearchInput').focus()">
+                <div id="selectedHostsTags"></div>
+                <input type="text" 
+                       id="hostSearchInput" 
+                       placeholder="🔍 Search hosts..." 
+                       autocomplete="off">
+            </div>
+            <div id="autocompleteDropdown" class="autocomplete-dropdown"></div>
+        </div>
+        <input type="hidden" name="hostids_submitted" id="hostidsSubmitted" value="">
+        <button type="submit">Search Hosts</button>
+    </div>
+</form>
 
-							<label class="form-label" for="host">Host (Optional)</label>
-							<select id="host" name="host">
-								<option value="">-- Select Host (Optional) --</option>
-							</select>
-							
-							<button type="submit" value="Search">Search</button>
-						</div>
-					</li>
-				</ul>
-			</div>
 <?php
-// Handle AJAX request for getting hosts in a hostgroup
-if (isset($_POST['get_hostgroup_hosts']) && isset($_POST['groupid'])) {
-    $hosts = api::host()->get(array(
-        'groupids' => $_POST['groupid'],
-        'output' => array('hostid', 'host', 'name'),
-        'sortfield' => 'name'
-    ));
-    
-    header('Content-Type: application/json');
-    echo json_encode($hosts);
-    exit;
+// Handle multi-host selection
+$selected_hostids = [];
+if(isset($_POST['hostids_submitted']) && !empty($_POST['hostids_submitted'])){
+    $selected_hostids = array_map('intval', explode(',', $_POST['hostids_submitted']));
+    $selected_hostids = array_filter($selected_hostids);
 }
 
-// Main search functionality
-if (isset($_POST['hostgroup'])) {
-    $selectedGroupId = $_POST['hostgroup'];
-    $selectedHostId = isset($_POST['host']) && !empty($_POST['host']) ? $_POST['host'] : null;
-    
-    // Determine which hosts to process
-    if ($selectedHostId) {
-        // Single host selected
-        $hostsToProcess = array($selectedHostId);
-    } else {
-        // All hosts in the hostgroup
-        $hosts = api::host()->get(array(
-            'groupids' => $selectedGroupId,
-            'output' => array('hostid'),
-        ));
-        $hostsToProcess = array_column($hosts, 'hostid');
+if(!empty($selected_hostids)){
+    // Fetch all host data first
+    $all_hosts_info = [];
+
+    foreach($selected_hostids as $single_hostid){
+        $hostInfo = API::Host()->get([
+            'hostids' => $single_hostid,
+            'output' => ['hostid','host','name','status','description','maintenance_status'],
+            'selectHostGroups' => ['groupid','name'],
+            'selectInterfaces' => ['interfaceid','type','main','available','error','ip','dns','port'],
+            'selectInventory' => ['type','type_full','name','os','contact'],
+            'selectMacros' => ['hostmacroid','macro','value','description','type','automatic'],
+            'selectParentTemplates' => ['templateid','name'],
+            'selectTags' => ['tag','value']
+        ]);
+
+        if(empty($hostInfo)) continue;
+
+        $itemsInfo = API::Item()->get([
+            'hostids' => [$single_hostid],
+            'webitems' => 1,
+            'preservekeys' => 1,
+            'templated' => NULL,
+            'output' => ['itemid','type','name','key_','delay','history','trends','status','state','description'],
+            'selectTriggers' => ['description'],
+            'sortfield' => 'name'
+        ]);
+
+        $triggers = API::Trigger()->get([
+            'output' => ['triggerid','description','expression','priority','status','state'],
+            'hostids' => [$single_hostid],
+            'expandExpression' => true,
+            'expandDescription' => true,
+            'sortfield' => 'description'
+        ]);
+
+        $all_hosts_info[] = [
+            'info' => $hostInfo[0],
+            'items' => $itemsInfo,
+            'triggers' => $triggers
+        ];
     }
-    
-    if (empty($hostsToProcess)) {
-?>
-        <p>No hosts found in the selected hostgroup.</p>
-<?php
-    } else {
-        // Fetch all host information first
-        $allHostsData = [];
-        
-        foreach ($hostsToProcess as $currentHostId) {
-            $hostInfo = api::host()->get(array(
-                'filter' => array('hostid' => $currentHostId),
-                'output' => array('hostid','host','name','status','description','proxyid','proxy_groupid','monitored_by','tls_connect','tls_accept','tls_issuer','tls_subject','flags','inventory_mode','maintenance_status'),
-                'selectDiscoveryRule' => array('itemid','name','parent_hostid'),
-                'selectHostGroups' => array('groupid','name'),
-                'selectHostDiscovery' => array('parent_hostid','host'),
-                'selectInterfaces' => array('interfaceid','type','main','available','error','details','ip','dns','port','useip'),
-                'selectInventory' => array('type','type_full','name','os','contact'),
-                'selectMacros' => array('hostmacroid','macro','value','description','type','automatic'),
-                'selectParentTemplates' => array('templateid','name','link_type','uuid'),
-                'selectTags' => array('tag','value','automatic')
-            ));
-            
-            if (empty($hostInfo)) {
-                continue;
-            }
-            
-            $hostInfo = $hostInfo[0];
-            
-            // Proxy information
-            $proxy_names = [];
-            $proxy_group_names = [];
-            $monitored_by = isset($hostInfo['monitored_by']) ? (int)$hostInfo['monitored_by'] : 0;
-            
-            if ($monitored_by === 1 && !empty($hostInfo['proxyid']) && $hostInfo['proxyid'] != '0') {
-                $proxyInfo = api::proxy()->get(array(
-                    'proxyids' => array($hostInfo['proxyid']),
-                    'output' => array('name')
-                ));
-                if (is_array($proxyInfo)) {
-                    foreach ($proxyInfo as $p) {
-                        $proxy_names[] = $p['name'];
+
+    // Export buttons
+    ?>
+    <div class="export-section">
+        <strong>Export <?php echo count($all_hosts_info); ?> host(s):</strong><br><br>
+        <button type="button" onclick="downloadHostConfig('csv')">📄 Download CSV</button>
+        <button type="button" onclick="downloadHostConfig('html')">🌐 Download HTML</button>
+        <button type="button" onclick="downloadHostConfig('json')">{ } Download JSON</button>
+    </div>
+
+    <!-- GENERAL INFORMATION - ALL HOSTS (TABULAR) -->
+    <div class="section-header">General Information - All Hosts</div>
+    <table>
+        <thead>
+            <tr>
+                <th>Host Name</th>
+                <th>Display Name</th>
+                <th>Status</th>
+                <th>Maintenance</th>
+                <th>Proxy</th>
+                <th>Proxy Group</th>
+                <th>Interfaces</th>
+                <th>Groups</th>
+                <th>Templates</th>
+            </tr>
+        </thead>
+        <tbody>
+        <?php foreach($all_hosts_info as $host_data): 
+            $host = $host_data['info'];
+        ?>
+            <tr>
+                <td class="host-name-header"><?php echo htmlspecialchars($host['host']); ?></td>
+                <td><?php echo htmlspecialchars($host['name']); ?></td>
+                <td><?php echo $map_status[$host['status']]; ?></td>
+                <td><?php echo $map_maintenance_status[$host['maintenance_status']]; ?></td>
+                <td>N/A</td>
+                <td>None</td>
+                <td>
+                    <?php
+                    $interfaces = [];
+                    foreach($host['interfaces'] as $iface){
+                        $if_text = '';
+                        if($iface['ip']) $if_text .= $iface['ip'];
+                        if($iface['ip'] && $iface['dns']) $if_text .= ', ';
+                        if($iface['dns']) $if_text .= $iface['dns'];
+                        if($if_text) $interfaces[] = $if_text;
                     }
-                }
-            }
-            
-            if ($monitored_by === 2 && !empty($hostInfo['proxy_groupid']) && $hostInfo['proxy_groupid'] != '0') {
-                $pgInfo = api::proxygroup()->get(array(
-                    'proxy_groupids' => array($hostInfo['proxy_groupid']),
-                    'output' => array('name')
-                ));
-                if (is_array($pgInfo)) {
-                    foreach ($pgInfo as $pg) {
-                        $proxy_group_names[] = $pg['name'];
-                    }
-                }
-            }
-            
-            // Fetch items and triggers for this host
-            $itemsInfo = api::item()->get(array(
-                'hostids' => array($hostInfo['hostid']),
-                'webitems' => 1,
-                'preservekeys' => 1,
-                'templated' => NULL,
-                'output' => array('itemid','type','name','key_','delay','history','trends','status','state','description'),
-                'selectTriggers' => array('description'),
-                'sortfield' => 'name'
-            ));
-            
-            $triggers = API::Trigger()->get(array(
-                'output' => array('triggerid','description','expression','priority','status','state'),
-                'filter' => array('hostid' => $hostInfo['hostid']),
-                'searchByAny' => 1,
-                'expandExpression' => true,
-                'expandDescription' => true,
-                'sortfield' => array('triggerid','description'),
-                'sortorder' => "ASC"
-            ));
+                    echo htmlspecialchars(implode(', ', $interfaces));
+                    ?>
+                </td>
+                <td>
+                    <?php
+                    $groups = array_map(function($g){ return $g['name']; }, $host['hostgroups']);
+                    echo htmlspecialchars(implode(', ', $groups));
+                    ?>
+                </td>
+                <td>
+                    <?php
+                    $templates = array_map(function($t){ return $t['name']; }, $host['parentTemplates']);
+                    echo htmlspecialchars(implode(', ', $templates));
+                    ?>
+                </td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody>
+    </table>
 
-            $severities = API::Settings()->get(array(
-                'output' => array('severity_color_0','severity_color_1','severity_color_2','severity_color_3','severity_color_4','severity_color_5')
-            ));
-            
-            // Store all data for this host
-            $allHostsData[] = [
-                'info' => $hostInfo,
-                'items' => $itemsInfo,
-                'triggers' => $triggers,
-                'severities' => $severities,
-                'proxy_names' => $proxy_names,
-                'proxy_group_names' => $proxy_group_names
-            ];
-        } // End foreach - data collection
-        
-        // Now display everything in organized sections
-?>
-        
-        <!-- EXPORT BUTTONS - Single set at top -->
-        <div style="margin:20px 0; padding: 15px; background: #f0f0f0; border-radius: 4px;">
-            <input type="hidden" id="exportGroupId" value="<?php echo htmlspecialchars($selectedGroupId); ?>">
-            <input type="hidden" id="exportHostId" value="<?php echo $selectedHostId ? htmlspecialchars($selectedHostId) : ''; ?>">
-            <h3 style="margin: 0 0 10px 0;">Export Configuration Data</h3>
-            <button type="button" onclick="downloadHostConfig('csv')" style="margin-right: 10px;">Download CSV</button>
-            <button type="button" onclick="downloadHostConfig('html')" style="margin-right: 10px;">Download HTML</button>
-            <button type="button" onclick="downloadHostConfig('json')">Download JSON</button>
-        </div>
-        
-        <!-- GENERAL INFORMATION - Consolidated table for all hosts -->
-        <div style="margin: 20px 0;">
-            <h2 style="border-bottom: 2px solid #007bff; padding-bottom: 10px;">General Information - All Hosts</h2>
-            <table class="source-tableeditor" id="general-info-table" style="width: 100%; margin-top: 15px;">
-                <thead>
-                    <tr>
-                        <th>Host Name</th>
-                        <th>Display Name</th>
-                        <th>Status</th>
-                        <th>Maintenance</th>
-                        <th>Proxy</th>
-                        <th>Proxy Group</th>
-                        <th>Interfaces</th>
-                        <th>Groups</th>
-                        <th>Templates</th>
-                    </tr>
-                </thead>
-                <tbody>
-<?php 
-        foreach ($allHostsData as $hostData) { 
-            $host = $hostData['info'];
-?>
-                    <tr>
-                        <td><?php echo htmlspecialchars($host['host']); ?></td>
-                        <td><?php echo htmlspecialchars($host['name']); ?></td>
-                        <td><?php echo $map_status[$host['status']]; ?></td>
-                        <td><?php echo $map_maintenance_status[$host['maintenance_status']]; ?></td>
-                        <td><?php echo !empty($hostData['proxy_names']) ? htmlspecialchars(implode(', ', $hostData['proxy_names'])) : 'N/A'; ?></td>
-                        <td><?php echo !empty($hostData['proxy_group_names']) ? htmlspecialchars(implode(', ', $hostData['proxy_group_names'])) : 'None'; ?></td>
-                        <td>
-<?php 
-            $interfaces = [];
-            foreach($host['interfaces'] as $interface) {
-                $intStr = '';
-                if ($interface['ip']) $intStr .= $interface['ip'];
-                if ($interface['ip'] && $interface['dns']) $intStr .= ' || ';
-                if ($interface['dns']) $intStr .= $interface['dns'];
-                if ($intStr) $interfaces[] = $intStr;
-            }
-            echo htmlspecialchars(implode(', ', $interfaces));
-?>
-                        </td>
-                        <td>
-<?php 
-            $groups = array_column($host['hostgroups'], 'name');
-            echo htmlspecialchars(implode(', ', $groups));
-?>
-                        </td>
-                        <td>
-<?php 
-            $templates = array_column($host['parentTemplates'], 'name');
-            echo htmlspecialchars(implode(', ', $templates));
-?>
-                        </td>
-                    </tr>
-<?php 
-        } // End foreach for general info table
-?>
-                </tbody>
-            </table>
-        </div>
-        
-        <script>
-        $(document).ready(function() {
-            $('#general-info-table').DataTable({
-                paging: false,
-                searching: true,
-                ordering: true,
-                info: false
-            });
-        });
-        </script>
-        
-        <!-- HOST-SPECIFIC SECTIONS - Macros, Inventory, Items, Triggers per host -->
-<?php 
-        foreach ($allHostsData as $index => $hostData) { 
-            $host = $hostData['info'];
-            $hostid = $host['hostid'];
-            $itemsInfo = $hostData['items'];
-            $triggers = $hostData['triggers'];
-            $severities = $hostData['severities'];
-            
-            $inventory_labels = [
-                'type'       => 'Environment',
-                'type_full'  => 'Product',
-                'name'       => 'Host Name',
-                'os'         => 'OS',
-                'contact'    => 'Customer'
-            ];
+    <!-- INDIVIDUAL HOST DETAILS -->
+    <?php foreach($all_hosts_info as $index => $host_data): 
+        $host = $host_data['info'];
+        $items = $host_data['items'];
+        $triggers = $host_data['triggers'];
+    ?>
 
-            $inventory_order = ['name', 'contact', 'type_full', 'type', 'os'];
-            $inventory_raw = $host['inventory'];
-            $inventory_formatted = [];
-
-            foreach ($inventory_order as $key) {
-                if (isset($inventory_raw[$key])) {
-                    $label = isset($inventory_labels[$key]) ? $inventory_labels[$key] : $key;
-                    $inventory_formatted[$label] = $inventory_raw[$key];
-                }
-            }
-?>
-        
-        <div style="margin: 40px 0; padding: 20px; background: #f9f9f9; border-left: 4px solid #007bff;">
-            <h2 style="margin-top: 0; color: #007bff;">
-                <?php echo htmlspecialchars($host['name']); ?> 
-                <span style="font-size: 14px; color: #666;">(<?php echo htmlspecialchars($host['host']); ?>)</span>
+        <div class="host-details-section">
+            <h2 class="host-title">
+                <?php echo htmlspecialchars($host['host']); ?> 
+                <span style="color: #666; font-size: 14px;">(<?php echo htmlspecialchars($host['name']); ?>)</span>
             </h2>
-            
-            <div style="display: flex; gap: 20px; margin-bottom: 20px;">
-                <!-- Macros -->
-                <div style="flex: 1;">
-                    <details open="true">
-                        <summary><h3 style="display: inline-block; margin: 0;">Macros</h3></summary>
-                        <table id="macros_<?php echo $hostid;?>" class="display list-table" style="width: 100%; margin-top: 10px;">
+
+            <!-- HORIZONTAL LAYOUT: MACROS | INVENTORY | TAGS -->
+            <div class="horizontal-sections">
+
+                <!-- MACROS (COLLAPSED by default) -->
+                <div>
+                    <details>
+                        <summary>MACROS (<?php echo count($host['macros']); ?>)</summary>
+                        <table style="margin-top: 10px; font-size: 13px;">
                             <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Value</th>
-                                    <th>Description</th>
-                                </tr>
+                                <tr><th>Name</th><th>Value</th><th>Description</th></tr>
                             </thead>
                             <tbody>
-<?php foreach($host['macros'] as $macro) { ?>
+                            <?php 
+                            if(!empty($host['macros'])){
+                                foreach($host['macros'] as $macro){ 
+                            ?>
                                 <tr>
                                     <td><?php echo htmlspecialchars($macro['macro']); ?></td>
-                                    <td><?php echo isset($macro['value']) ? htmlspecialchars($macro['value']) : "*** secret ***"; ?></td>
-                                    <td><?php echo htmlspecialchars($macro['description']); ?></td>
+                                    <td><?php echo isset($macro['value']) ? htmlspecialchars($macro['value']) : '***'; ?></td>
+                                    <td><?php echo htmlspecialchars($macro['description'] ?? ''); ?></td>
                                 </tr>
-<?php } ?>
+                            <?php 
+                                }
+                            } else {
+                                echo '<tr><td colspan="3"><em>No macros</em></td></tr>';
+                            }
+                            ?>
                             </tbody>
                         </table>
                     </details>
                 </div>
-                
-                <!-- Inventory -->
-                <div style="flex: 1;">
-                    <details open="true">
-                        <summary><h3 style="display: inline-block; margin: 0;">Inventory</h3></summary>
-                        <table class="source-tableeditor" style="width: 100%; margin-top: 10px;">
+
+                <!-- INVENTORY (COLLAPSED by default) -->
+                <div>
+                    <details>
+                        <summary>INVENTORY</summary>
+                        <table style="margin-top: 10px; font-size: 13px;">
                             <tbody>
-                            <?php echo build_table($inventory_formatted); ?>
+                            <?php
+                            $inventory_labels = [
+                                'name' => 'Host Name',
+                                'contact' => 'Customer',
+                                'type_full' => 'Product',
+                                'type' => 'Environment',
+                                'os' => 'OS'
+                            ];
+
+                            $inventory_raw = $host['inventory'] ?? [];
+                            $has_inventory = false;
+
+                            foreach($inventory_labels as $key => $label){
+                                if(isset($inventory_raw[$key]) && $inventory_raw[$key] !== ''){
+                                    echo '<tr><th style="width: 120px;">' . $label . '</th><td>' . htmlspecialchars($inventory_raw[$key]) . '</td></tr>';
+                                    $has_inventory = true;
+                                }
+                            }
+
+                            if(!$has_inventory){
+                                echo '<tr><td><em>No inventory data</em></td></tr>';
+                            }
+                            ?>
                             </tbody>
                         </table>
                     </details>
                 </div>
-                
-                <!-- Tags -->
-                <div style="flex: 1;">
-                    <details open="true">
-                        <summary><h3 style="display: inline-block; margin: 0;">Tags</h3></summary>
-                        <table class="source-tableeditor" style="width: 100%; margin-top: 10px;">
+
+                <!-- TAGS (COLLAPSED by default) -->
+                <div>
+                    <details>
+                        <summary>TAGS (<?php echo count($host['tags'] ?? []); ?>)</summary>
+                        <table style="margin-top: 10px; font-size: 13px;">
                             <thead>
-                                <tr>
-                                    <th>Tag</th>
-                                    <th>Value</th>
-                                </tr>
+                                <tr><th>Tag</th><th>Value</th></tr>
                             </thead>
                             <tbody>
-<?php if (!empty($host['tags'])) { ?>
-<?php foreach($host['tags'] as $tag) { ?>
-                                    <tr>
-                                        <td><?php echo htmlspecialchars($tag['tag']); ?></td>
-                                        <td><?php echo htmlspecialchars($tag['value']); ?></td>
-                                    </tr>
-<?php } ?>
-<?php } else { ?>
-                                <tr><td colspan="2" style="text-align: center; color: #999;">No tags</td></tr>
-<?php } ?>
+                            <?php 
+                            if(!empty($host['tags'])){
+                                foreach($host['tags'] as $tag){ 
+                            ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars($tag['tag']); ?></td>
+                                    <td><?php echo htmlspecialchars($tag['value']); ?></td>
+                                </tr>
+                            <?php 
+                                }
+                            } else {
+                                echo '<tr><td colspan="2"><em>No tags</em></td></tr>';
+                            }
+                            ?>
                             </tbody>
                         </table>
                     </details>
                 </div>
+
             </div>
-            
-            <!-- Items -->
-            <div style="margin: 20px 0;">
-                <details>
-                    <summary><h3 style="display: inline-block; margin: 0;">Items (<?php echo count($itemsInfo); ?>)</h3></summary>
-                    <table id="items_<?php echo $hostid;?>" class="display" style="width: 100%; margin-top: 10px;">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Key</th>
-                                <th>Interval</th>
-                                <th>History</th>
-                                <th>Trends</th>
-                                <th>Description</th>
-                                <th>Status</th>
-                                <th>State</th>
-                                <th>Triggers</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-<?php foreach($itemsInfo as $itemInfo) { ?>
-                            <tr>
-                                <td>
-                                    <a target='_blank' href='items.php?context=host&form=update&itemid=<?php echo $itemInfo['itemid'];?>&hostid=<?php echo $hostid;?>'>
-                                        <?php echo htmlspecialchars($itemInfo['name']); ?>
-                                    </a>
-                                </td>
-                                <td><?php echo htmlspecialchars($itemInfo['key_']); ?></td>
-                                <td><?php echo htmlspecialchars($itemInfo['delay']); ?></td>
-                                <td><?php echo htmlspecialchars($itemInfo['history']); ?></td>
-                                <td><?php echo htmlspecialchars($itemInfo['trends']); ?></td>
-                                <td><?php echo htmlspecialchars($itemInfo['description']); ?></td>
-                                <td><?php echo $map_item_status[$itemInfo['status']]; ?></td>
-                                <td><?php echo $map_item_state[$itemInfo['state']]; ?></td>
-                                <td>
-                                    <a title="<?php foreach($itemInfo['triggers'] as $trigger){ echo htmlspecialchars($trigger['description'])."\r\n";} ?>">
-                                        <?php echo count($itemInfo['triggers']); ?>
-                                    </a>
-                                </td>
-                            </tr>
-<?php } ?>
-                        </tbody>
-                    </table>
-                </details>
-            </div>
-            
-            <!-- Triggers -->
-            <div style="margin: 20px 0;">
-                <details>
-                    <summary><h3 style="display: inline-block; margin: 0;">Triggers (<?php echo count($triggers); ?>)</h3></summary>
-                    <table id="triggers_<?php echo $hostid;?>" class="display" style="width: 100%; margin-top: 10px;">
-                        <thead>
-                            <tr>
-                                <th>Trigger Name</th>
-                                <th>Severity</th>
-                                <th>Expression</th>
-                                <th>Status</th>
-                                <th>State</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-<?php foreach($triggers as $trigger) { ?>
-                            <tr>
-                                <td>
-                                    <a target='_blank' href='triggers.php?context=host&form=update&triggerid=<?php echo $trigger['triggerid'];?>'>
-                                        <?php echo htmlspecialchars($trigger['description']); ?>
-                                    </a>
-                                </td>
-                                <td style='background-color: #<?php echo $severities["severity_color_".$trigger['priority']]."80";?>'>
+            <!-- END HORIZONTAL LAYOUT -->
+
+            <!-- ITEMS -->
+            <details style="margin-top: 20px;">
+                <summary>ITEMS (<?php echo count($items); ?>)</summary>
+                <table style="margin-top: 10px; font-size: 13px;">
+                    <thead>
+                        <tr>
+                            <th>Name</th><th>Key</th><th>Interval</th><th>History</th><th>Trends</th>
+                            <th>Description</th><th>Status</th><th>State</th><th>Triggers</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <?php 
+                    if(!empty($items)){
+                        foreach($items as $item){ 
+                    ?>
+                        <tr>
+                            <td><?php echo htmlspecialchars($item['name']); ?></td>
+                            <td><code><?php echo htmlspecialchars($item['key_']); ?></code></td>
+                            <td><?php echo htmlspecialchars($item['delay']); ?></td>
+                            <td><?php echo htmlspecialchars($item['history']); ?></td>
+                            <td><?php echo htmlspecialchars($item['trends']); ?></td>
+                            <td><?php echo htmlspecialchars($item['description'] ?? ''); ?></td>
+                            <td><?php echo $map_item_status[$item['status']]; ?></td>
+                            <td><?php echo $map_item_state[$item['state']]; ?></td>
+                            <td><?php echo count($item['triggers']); ?></td>
+                        </tr>
+                    <?php 
+                        }
+                    } else {
+                        echo '<tr><td colspan="9"><em>No items</em></td></tr>';
+                    }
+                    ?>
+                    </tbody>
+                </table>
+            </details>
+
+            <!-- TRIGGERS with COLORED SEVERITY BADGES -->
+            <details style="margin-top: 20px;">
+                <summary>TRIGGERS (<?php echo count($triggers); ?>)</summary>
+                <table style="margin-top: 10px; font-size: 13px;">
+                    <thead>
+                        <tr>
+                            <th>Trigger Name</th><th>Severity</th><th>Expression</th>
+                            <th>Status</th><th>State</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <?php 
+                    if(!empty($triggers)){
+                        foreach($triggers as $trigger){ 
+                    ?>
+                        <tr>
+                            <td><?php echo htmlspecialchars($trigger['description']); ?></td>
+                            <td>
+                                <span class="severity-badge severity-<?php echo $trigger['priority']; ?>">
                                     <?php echo $map_trigger_priority[$trigger['priority']]; ?>
-                                </td>
-                                <td style='background-color: #<?php echo $severities["severity_color_".$trigger['priority']]."80";?>'>
-                                    <?php echo htmlspecialchars($trigger['expression']); ?>
-                                </td>
-                                <td><?php echo $map_trigger_status[$trigger['status']]; ?></td>
-                                <td><?php echo $map_trigger_state[$trigger['state']]; ?></td>
-                            </tr>
-<?php } ?>
-                        </tbody>
-                    </table>
-                </details>
-            </div>
+                                </span>
+                            </td>
+                            <td><code style="font-size: 11px;"><?php echo htmlspecialchars($trigger['expression']); ?></code></td>
+                            <td><?php echo $map_trigger_status[$trigger['status']]; ?></td>
+                            <td><?php echo $map_trigger_state[$trigger['state']]; ?></td>
+                        </tr>
+                    <?php 
+                        }
+                    } else {
+                        echo '<tr><td colspan="5"><em>No triggers</em></td></tr>';
+                    }
+                    ?>
+                    </tbody>
+                </table>
+            </details>
+
         </div>
-        
-<?php 
-        } // End foreach host display 
-?>
-        
-        <script>
-        // Initialize DataTables for all host-specific tables
-        $(document).ready(function() {
-            $('table[id^="macros_"], table[id^="items_"], table[id^="triggers_"]').each(function() {
-                $(this).DataTable({
-                    paging: true,
-                    pageLength: 25,
-                    searching: true,
-                    ordering: true
-                });
-            });
-        });
-        </script>
-        
-<?php
-    } // End if hostsToProcess not empty
-} // End if isset($_POST['hostgroup'])
-?>
-		</div>
-	</form>
-</main>
+
+    <?php endforeach; ?>
 
 <?php
-require_once './include/page_footer.php';
+} // end if hosts selected
 ?>
+
+<script>
+// All hosts data for autocomplete
+const hostsData = <?php echo json_encode($hosts_data_json); ?>;
+let selectedHosts = new Set();
+
+<?php
+// Restore previously selected hosts
+if(!empty($selected_hostids)){
+    echo "selectedHosts = new Set(" . json_encode(array_map('strval', $selected_hostids)) . ");";
+}
+?>
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    updateSelectedHostsTags();
+    updateHiddenInput();
+});
+
+const searchInput = document.getElementById('hostSearchInput');
+const dropdown = document.getElementById('autocompleteDropdown');
+
+// Show dropdown on focus
+searchInput.addEventListener('focus', function() {
+    showDropdown();
+});
+
+// Filter on input			  
+searchInput.addEventListener('input', function() {
+    showDropdown();
+});
+
+// Hide dropdown when clicking outside
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.multiselect-container')) {
+        dropdown.classList.remove('show');
+    }
+});
+
+function showDropdown() {
+    const searchTerm = searchInput.value.toLowerCase();
+    const filtered = hostsData.filter(host => 
+        host.display.toLowerCase().includes(searchTerm)
+    );
+
+    if (filtered.length === 0) {
+        dropdown.innerHTML = '<div class="autocomplete-item" style="color: #999;">No hosts found</div>';
+    } else {
+        dropdown.innerHTML = filtered.slice(0, 50).map(host => {
+            const isSelected = selectedHosts.has(host.id.toString());
+            const className = isSelected ? 'autocomplete-item selected' : 'autocomplete-item';
+            const text = isSelected ? host.display + ' ✓' : host.display;
+            return `<div class="${className}" data-hostid="${host.id}" data-hostname="${escapeHtml(host.name)}" data-display="${escapeHtml(host.display)}">${escapeHtml(text)}</div>`;
+        }).join('');
+    }
+
+    dropdown.classList.add('show');
+
+    // Add click handlers
+    dropdown.querySelectorAll('.autocomplete-item').forEach(item => {
+        item.addEventListener('click', function() {
+            const hostid = this.getAttribute('data-hostid');
+
+            if (!selectedHosts.has(hostid)) {
+                selectedHosts.add(hostid);
+                updateSelectedHostsTags();
+                updateHiddenInput();
+            }
+
+            searchInput.value = '';
+            searchInput.focus();
+            showDropdown();
+        });
+    });
+}
+
+function updateSelectedHostsTags() {
+    const tagsContainer = document.getElementById('selectedHostsTags');
+
+    if (selectedHosts.size === 0) {
+        tagsContainer.innerHTML = '';
+        return;
+    }
+
+    const tags = Array.from(selectedHosts).map(hostid => {
+        const host = hostsData.find(h => h.id.toString() === hostid);
+        if (!host) return '';
+
+        return `<span class="selected-host-tag">
+            ${escapeHtml(host.name)}
+            <span class="remove" onclick="removeHost('${hostid}')" title="Remove">×</span>
+        </span>`;
+    }).join('');
+
+    tagsContainer.innerHTML = tags;
+}
+
+function removeHost(hostid) {
+    selectedHosts.delete(hostid.toString());
+    updateSelectedHostsTags();
+    updateHiddenInput();
+    showDropdown();
+}
+
+function updateHiddenInput() {
+    document.getElementById('hostidsSubmitted').value = Array.from(selectedHosts).join(',');
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Export function
+function downloadHostConfig(format) {
+    if (selectedHosts.size === 0) {
+        alert('Please select at least one host');
+        return;
+    }
+
+    const hostids = Array.from(selectedHosts).join(',');
+    window.location.href = 'zabbix.php?action=gethostro.view&export=' + encodeURIComponent(format) + '&hostids=' + hostids;
+}
+</script>
+
+</body>
+</html>
