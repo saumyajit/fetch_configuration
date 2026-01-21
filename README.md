@@ -81,17 +81,21 @@ This makes it useful for audits, compliance checks, debugging, and migration.
 
 Once enabled:
 
-1. A new menu entry will appear in the Zabbix UI:  
-**Fetch Host Configuration**
+1. A new menu entry will appear in the Zabbix UI (under Reports):  
+**Configuration Report**  
+      ***-> Host View*** (Search using Host/s)  
+      ***-> Group View*** (Search using HostGroup/s)
 
-2. Select a host or choose to fetch all hosts.
+3. Select respective page based on your search preference.
 
-3. Choose an export option:
+4. Search for ***Host/s*** or ***HostGroup/s*** to fetch data for those host/s.
+
+5. Choose an export option:
 - **Download CSV**
 - **Download HTML**
 - **Download JSON**
 
-4. Save or open the exported host configuration file.
+6. Save or open the exported host configuration file.
 
 ---
 
