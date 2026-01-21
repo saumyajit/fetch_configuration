@@ -9,6 +9,7 @@ This module makes it easy to audit, document, back up, or compare host configura
 ## ✨ Features
 
 ✔ **Fetch configuration for any host**  
+✔ **Search using Host/s or HostGroup/s**  
 ✔ **Export host configuration in multiple formats:**  
 - **CSV** – ideal for spreadsheets, auditing, and comparisons  
 - **HTML** – readable reports for documentation  
